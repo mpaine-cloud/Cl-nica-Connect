@@ -1,0 +1,66 @@
+{
+  "entities": {
+    "Campaign": {
+      "title": "Campaign",
+      "description": "Represents a marketing campaign with leads and financial metrics.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The UID of the user who owns this campaign data."
+        },
+        "mes": {
+          "type": "string",
+          "description": "The month of the campaign."
+        },
+        "campaign": {
+          "type": "string",
+          "description": "Name of the campaign."
+        },
+        "leadsIngresados": {
+          "type": "number",
+          "description": "Number of received leads."
+        },
+        "leadsAgendados": {
+          "type": "number",
+          "description": "Number of scheduled leads."
+        },
+        "leadsNoAsisten": {
+          "type": "number",
+          "description": "Number of leads who did not attend."
+        },
+        "leadsConvierten": {
+          "type": "number",
+          "description": "Number of converted leads."
+        },
+        "pacientesSiguen": {
+          "type": "number",
+          "description": "Number of patients that continue treatment."
+        },
+        "montoInvertido": {
+          "type": "number",
+          "description": "Invested amount."
+        },
+        "montoPorCliente": {
+          "type": "number",
+          "description": "Cost per client."
+        },
+        "ingresos": {
+          "type": "number",
+          "description": "Income generated."
+        },
+        "createdAt": {
+          "type": "timestamp",
+          "description": "Creation timestamp."
+        }
+      },
+      "required": ["userId", "mes", "campaign", "leadsIngresados", "leadsAgendados", "leadsNoAsisten", "leadsConvierten", "pacientesSiguen", "montoInvertido", "montoPorCliente", "ingresos"]
+    }
+  },
+  "firestore": {
+    "campaigns/{campaignId}": {
+      "schema": { "$ref": "#/entities/Campaign" },
+      "description": "Store campaigns for users."
+    }
+  }
+}

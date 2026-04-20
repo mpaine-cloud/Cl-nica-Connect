@@ -1,0 +1,5 @@
+{
+  "name": "Dashboard de Gestión Clínica",
+  "description": "Control de gestión de leads y pacientes, conectado a Google Sheets con asistente de IA.",
+  "requestFramePermissions": []
+}

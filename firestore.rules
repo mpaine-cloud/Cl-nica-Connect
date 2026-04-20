@@ -1,0 +1,111 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// This security rules file assumes the following data structures:
+//
+// Collection: campaigns
+// Document ID: auto-generated
+// Fields:
+//   - userId: string (required) - immutable
+//   - mes: string (required) - The month of the campaign
+//   - campaign: string (required) - Name of the campaign
+//   - leadsIngresados: number (required) - Number of received leads (>= 0)
+//   - leadsAgendados: number (required) - Number of scheduled leads (>= 0)
+//   - leadsNoAsisten: number (required) - Number of leads who did not attend (>= 0)
+//   - leadsConvierten: number (required) - Number of converted leads (>= 0)
+//   - pacientesSiguen: number (required) - Number of patients that continue treatment (>= 0)
+//   - montoInvertido: number (required) - Invested amount (>= 0)
+//   - montoPorCliente: number (required) - Cost per client (>= 0)
+//   - ingresos: number (required) - Income generated (>= 0)
+//   - createdAt: timestamp (required) - immutable
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    // Check if the user is authenticated
+    function isAuthenticated() {
+       return request.auth != null;
+    }
+    
+    // Check if user owns the resource
+    function isOwner(userId) {
+       return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Explicit Allowlist of allowed administrators (Montecarlo Security check)
+    function isAuthorizedEmail() {
+       return isAuthenticated() && request.auth.token.email in ['jcontreras.ktr@gmail.com', 'mpaine@amipgo.com'];
+    }
+    
+    // Validate required fields exist
+    function hasRequiredFields(fields) {
+       return request.resource.data.keys().hasAll(fields);
+    }
+    
+    // Verify userId hasn't been tampered with on create
+    function uidUnchanged() {
+       return !('userId' in request.resource.data) ||
+         request.resource.data.userId == request.auth.uid;
+    }
+    
+    // Ensure userId field is not modified on update
+    function uidNotModified() {
+       return !('userId' in request.resource.data) ||
+         request.resource.data.userId == resource.data.userId;
+    }
+    
+    // Ensure createdAt field is not modified on update
+    function createdAtNotModified() {
+       return !('createdAt' in request.resource.data) ||
+         request.resource.data.createdAt == resource.data.createdAt;
+    }
+    
+    // Validate a typical number field
+    function isValidNumber(field) {
+       return field in request.resource.data && request.resource.data[field] is number && request.resource.data[field] >= 0;
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    
+    function isValidCampaign(data) {
+      let allowedFields = ['userId', 'mes', 'anio', 'campaign', 'leadsIngresados', 'leadsAgendados', 'leadsNoAsisten', 'leadsConvierten', 'pacientesSiguen', 'montoInvertido', 'montoPorCliente', 'ingresos', 'createdAt'];
+      
+      return request.resource.data.keys().hasOnly(allowedFields) &&
+             // Removed hasRequiredFields to allow dropping pacientesSiguen
+             data.userId is string && data.userId == request.auth.uid &&
+             (!('anio' in data) || (data.anio is number && data.anio >= 2000)) &&
+             data.mes is string && data.mes.size() > 0 && data.mes.size() < 50 &&
+             data.campaign is string && data.campaign.size() > 0 && data.campaign.size() < 100 &&
+             isValidNumber('leadsIngresados') &&
+             isValidNumber('leadsAgendados') &&
+             isValidNumber('leadsNoAsisten') &&
+             isValidNumber('leadsConvierten') &&
+             // Keep validation IF field is present, but otherwise allow its absence
+             (!('pacientesSiguen' in request.resource.data) || isValidNumber('pacientesSiguen')) &&
+             isValidNumber('montoInvertido') &&
+             isValidNumber('montoPorCliente') &&
+             isValidNumber('ingresos') &&
+             data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+    match /campaigns/{campaignId} {
+      allow read: if isOwner(resource.data.userId) && isAuthorizedEmail();
+      allow create: if isAuthenticated() && isAuthorizedEmail() && uidUnchanged() && isValidCampaign(request.resource.data);
+      allow update: if isOwner(resource.data.userId) && isAuthorizedEmail() && uidNotModified() && createdAtNotModified() && isValidCampaign(request.resource.data);
+      allow delete: if isOwner(resource.data.userId) && isAuthorizedEmail();
+    }
+  }
+}
