@@ -132,8 +132,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setError(null);
 
     const campaignsRef = collection(db, 'campaigns');
-    // Important: We fetch campaigns matching the user.
-    const q = query(campaignsRef, where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
+    // Important: We fetch all campaigns for authorized users.
+    const q = query(campaignsRef, orderBy('createdAt', 'desc'));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedData: CampaignData[] = snapshot.docs.map(doc => {

@@ -82,7 +82,7 @@ service cloud.firestore {
       
       return request.resource.data.keys().hasOnly(allowedFields) &&
              // Removed hasRequiredFields to allow dropping pacientesSiguen
-             data.userId is string && data.userId == request.auth.uid &&
+             data.userId is string &&
              (!('anio' in data) || (data.anio is number && data.anio >= 2000)) &&
              data.mes is string && data.mes.size() > 0 && data.mes.size() < 50 &&
              data.campaign is string && data.campaign.size() > 0 && data.campaign.size() < 100 &&
@@ -102,10 +102,10 @@ service cloud.firestore {
     // Rules
     // ===============================================================
     match /campaigns/{campaignId} {
-      allow read: if isOwner(resource.data.userId) && isAuthorizedEmail();
+      allow read: if isAuthorizedEmail();
       allow create: if isAuthenticated() && isAuthorizedEmail() && uidUnchanged() && isValidCampaign(request.resource.data);
-      allow update: if isOwner(resource.data.userId) && isAuthorizedEmail() && uidNotModified() && createdAtNotModified() && isValidCampaign(request.resource.data);
-      allow delete: if isOwner(resource.data.userId) && isAuthorizedEmail();
+      allow update: if isAuthorizedEmail() && uidNotModified() && createdAtNotModified() && isValidCampaign(request.resource.data);
+      allow delete: if isAuthorizedEmail();
     }
   }
 }
