@@ -42,39 +42,28 @@ export const Chatbot: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Enviar una muestra acotada del historial para no sobresaturar el payload (Simulación Montecarlo - límite de tokens)
-      const historicalSummary = {
-        totalCampañasHistóricas: data.length,
-        métricasGlobalesDeTodoElTiempo: metrics, // Global metrics for all time
-      };
+      // Versión optimizada de los datos para ahorrar tokens
+      const compactData = filteredData.map(c => ({
+        campaña: c.campaign,
+        leads: c.leadsIngresados,
+        agendados: c.leadsAgendados,
+        convierten: c.leadsConvierten,
+        inversion: c.montoInvertido,
+        ingresos: c.ingresos,
+        roas: c.montoInvertido > 0 ? (c.ingresos / c.montoInvertido).toFixed(2) : 0
+      }));
 
       const systemInstruction = `
-        Eres un Experto Clínico Senior en Marketing Digital y Control de Gestión.
-        Tu misión es analizar el rendimiento de las campañas publicitarias de la clínica de forma proactiva, proponer mejoras accionables y estrategias de marketing concretas (Meta Ads, Google Ads, optimización de conversión, remarketing, retención de pacientes, etc.). No te limites a leer y repetir los datos; interpreta financieramente el ROAS (Retorno de Inversión), el CAC (Costo de Adquisición), las tasas de inasistencia y asitencia, y propón tipos de campañas o ajustes estratégicos.
-        
-        Fecha Seleccionada Actualmente: ${selectedMonth} del ${selectedYear}
+        Eres un Experto Clínico Senior en Marketing Digital. 
+        Analiza estos datos de ${selectedMonth} ${selectedYear}:
+        ${JSON.stringify(compactData)}
 
-        Métricas Globales de la Fecha Seleccionada (${selectedMonth} ${selectedYear}):
-        - Total Leads Ingresados: ${filteredMetrics.totalLeadsIngresados}
-        - Total Leads Agendados: ${filteredMetrics.totalLeadsAgendados}
-        - Total No Asisten: ${filteredMetrics.totalNoAsisten}
-        - Total Convierten a Pacientes: ${filteredMetrics.totalConvierten}
-        - Total Monto Invertido: $${filteredMetrics.totalMontoInvertido.toLocaleString()}
-        - Costo por Cliente (CAC): $${filteredMetrics.costoPromedioPorCliente.toLocaleString(undefined, {maximumFractionDigits: 2})}
-        - Ingresos Totales: $${filteredMetrics.totalIngresos.toLocaleString()}
-        - ROAS Global: ${filteredMetrics.roas ? filteredMetrics.roas.toFixed(2) : '0.00'}x
-        
-        Datos por Campaña de la Fecha Seleccionada:
-        ${JSON.stringify(filteredData, null, 2)}
+        Resumen Histórico General:
+        - Total Campañas: ${data.length}
+        - ROAS Global: ${metrics.roas.toFixed(2)}
+        - CAC Promedio: $${metrics.costoPromedioPorCliente.toFixed(0)}
 
-        Resumen Histórico de todo el tiempo (Todos los meses de todos los años):
-        ${JSON.stringify(historicalSummary, null, 2)}
-        
-        Reglas de respuesta:
-        1. Sé estratégico/a: siempre que des un diagnóstico, adjunta una recomendación táctica de marketing digital (ej. usar lookalikes, retargeting para inasistencias).
-        2. Menciona términos comerciales y de performance: ROAS, CAC, CPL (Costo por Lead) y Conversión de manera justificada.
-        3. Si el usuario te hace una pregunta general, ofrécele una breve auditoría de sus métricas de mayor o menor rendimiento con un consejo de inversión.
-        4. Usa formato Markdown con listas, negritas y estructura clara para que tu lectura sea ágil y profesional.
+        Reglas: Sé estratégico, propón tácticas concretas (Meta/Google Ads), usa Markdown y sé breve pero profesional.
       `;
 
       // Call secure backend instead of calling Gemini directly from the client
