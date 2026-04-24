@@ -29,13 +29,13 @@ async function startServer() {
         parts: [{ text: msg.content }]
       }));
 
-      console.log(`[AI] Iniciando chat con modelo: gemini-3.1-pro-preview`);
+      console.log(`[AI] Iniciando chat con modelo: gemini-3.1-flash-preview`);
       console.log(`[AI] Historial: ${history.length} mensajes`);
       console.log(`[AI] Nueva pregunta: ${newMessage.substring(0, 50)}...`);
 
       // Initialize chat with full history to optimize quota usage (1 request instead of N+1)
       const chat = ai.chats.create({
-        model: 'gemini-3.1-pro-preview',
+        model: 'gemini-3.1-flash-preview',
         history,
         config: {
           systemInstruction,
