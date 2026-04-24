@@ -24,13 +24,19 @@ async function startServer() {
 
       const ai = new GoogleGenAI({ apiKey });
       
+      const history = messages.map((msg: any) => ({
+        role: msg.role === 'user' ? 'user' : 'model',
+        parts: [{ text: msg.content }]
+      }));
+
+      console.log(`[AI] Iniciando chat con modelo: gemini-1.5-flash`);
+      console.log(`[AI] Historial: ${history.length} mensajes`);
+      console.log(`[AI] Nueva pregunta: ${newMessage.substring(0, 50)}...`);
+
       // Initialize chat with full history to optimize quota usage (1 request instead of N+1)
       const chat = ai.chats.create({
         model: 'gemini-1.5-flash',
-        history: messages.map((msg: any) => ({
-          role: msg.role === 'user' ? 'user' : 'model',
-          parts: [{ text: msg.content }]
-        })),
+        history,
         config: {
           systemInstruction,
           temperature: 0.7,
@@ -38,9 +44,13 @@ async function startServer() {
       });
 
       const response = await chat.sendMessage({ message: newMessage });
+      console.log(`[AI] Respuesta recibida correctamente`);
       res.json({ text: response.text });
     } catch (error: any) {
-      console.error('Error calling Gemini:', error);
+      console.error('--- ERROR LLAMANDO A GEMINI ---');
+      console.error('Mensaje:', error.message);
+      console.error('Stack:', error.stack);
+      if (error.details) console.error('Detalles:', JSON.stringify(error.details, null, 2));
       res.status(500).json({ error: error.message || "Error interno del servidor" });
     }
   });
