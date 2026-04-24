@@ -15,24 +15,27 @@ async function startServer() {
     try {
       const { messages, systemInstruction, newMessage } = req.body;
       
-      const apiKey = process.env.GEMINI_API_KEY;
+      let apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
         throw new Error("API Key de Gemini no configurada en el servidor.");
       }
+      // Limpiar comillas, saltos de línea o espacios invisibles que suelen colarse al copiar en Render
+      apiKey = apiKey.replace(/['"\s]/g, '');
 
       const ai = new GoogleGenAI({ apiKey });
+      
+      // Initialize chat with full history to optimize quota usage (1 request instead of N+1)
       const chat = ai.chats.create({
-        model: 'gemini-3.1-pro-preview',
+        model: 'gemini-1.5-flash',
+        history: messages.map((msg: any) => ({
+          role: msg.role === 'user' ? 'user' : 'model',
+          parts: [{ text: msg.content }]
+        })),
         config: {
           systemInstruction,
           temperature: 0.7,
         }
       });
-
-      // Send previous messages to maintain context
-      for (const msg of messages) {
-        await chat.sendMessage({ message: msg.content });
-      }
 
       const response = await chat.sendMessage({ message: newMessage });
       res.json({ text: response.text });
