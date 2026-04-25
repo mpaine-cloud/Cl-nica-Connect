@@ -42,38 +42,40 @@ export const Chatbot: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Versión optimizada de los datos para ahorrar tokens
-      const compactData = filteredData.map(c => ({
-        campaña: c.campaign,
-        leads: c.leadsIngresados,
-        agendados: c.leadsAgendados,
-        convierten: c.leadsConvierten,
-        inversion: c.montoInvertido,
-        ingresos: c.ingresos,
-        roas: c.montoInvertido > 0 ? (c.ingresos / c.montoInvertido).toFixed(2) : 0
-      }));
+      // --- ALTERNATIVA 3: RESUMEN INTELIGENTE (Cálculos en código) ---
+      const sortedByRoas = [...filteredData]
+        .filter(c => c.montoInvertido > 0)
+        .sort((a, b) => (b.ingresos / b.montoInvertido) - (a.ingresos / a.montoInvertido));
+      
+      const best = sortedByRoas[0];
+      const worst = sortedByRoas[sortedByRoas.length - 1];
+
+      // --- ALTERNATIVA 1: DIETA DE TOKENS (CSV Compacto) ---
+      // Formato: Campaña|Leads|Conv|ROAS
+      const csvData = filteredData.map(c => 
+        `${c.campaign.substring(0, 15)}|${c.leadsIngresados}|${c.leadsConvierten}|${c.montoInvertido > 0 ? (c.ingresos / c.montoInvertido).toFixed(1) : 0}`
+      ).join('\n');
 
       const systemInstruction = `
-        Eres un Experto Clínico Senior en Marketing Digital. 
-        Analiza estos datos de ${selectedMonth} ${selectedYear}:
-        ${JSON.stringify(compactData)}
+        Contexto Clínico ${selectedMonth} ${selectedYear}:
+        Métricas: ROAS ${metrics.roas.toFixed(1)}, CAC $${metrics.costoPromedioPorCliente.toFixed(0)}, Ingresos $${metrics.totalIngresos.toLocaleString()}.
+        Top: ${best ? `${best.campaign} (${(best.ingresos/best.montoInvertido).toFixed(1)}x)` : 'N/A'}.
+        Bajo: ${worst ? `${worst.campaign} (${(worst.ingresos/worst.montoInvertido).toFixed(1)}x)` : 'N/A'}.
+        
+        Datos (Camp|Leads|Conv|ROAS):
+        ${csvData}
 
-        Resumen Histórico General:
-        - Total Campañas: ${data.length}
-        - ROAS Global: ${metrics.roas.toFixed(2)}
-        - CAC Promedio: $${metrics.costoPromedioPorCliente.toFixed(0)}
-
-        Reglas: Sé estratégico, propón tácticas concretas (Meta/Google Ads), usa Markdown y sé breve pero profesional.
+        Reglas: Eres un experto en marketing. Sé breve, estratégico y usa Markdown.
       `;
 
-      // Call secure backend instead of calling Gemini directly from the client
+      // --- VENTANA DE HISTORIAL (Últimos 6 mensajes para ahorrar tokens) ---
+      const historyWindow = messages.slice(-6);
+
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: messages.slice(1), // Historial
+          messages: historyWindow,
           systemInstruction,
           newMessage: userMessage
         })

@@ -29,29 +29,41 @@ async function startServer() {
         parts: [{ text: msg.content }]
       }));
 
-      console.log(`[AI] Iniciando chat con modelo: gemini-2.0-flash`);
-      console.log(`[AI] Historial: ${history.length} mensajes`);
-      console.log(`[AI] Nueva pregunta: ${newMessage.substring(0, 50)}...`);
+      // --- MECANISMO DE REINTENTO (RETRY LOGIC) ---
+      let attempts = 0;
+      const maxAttempts = 2;
+      let lastError: any;
 
-      // Initialize chat with full history to optimize quota usage (1 request instead of N+1)
-      const chat = ai.chats.create({
-        model: 'gemini-2.0-flash',
-        history,
-        config: {
-          systemInstruction,
-          temperature: 0.7,
+      while (attempts < maxAttempts) {
+        try {
+          const chat = ai.chats.create({
+            model: 'gemini-2.0-flash',
+            history,
+            config: {
+              systemInstruction,
+              temperature: 0.7,
+            }
+          });
+
+          const response = await chat.sendMessage({ message: newMessage });
+          return res.json({ text: response.text });
+        } catch (error: any) {
+          lastError = error;
+          if (error.message?.includes('429') || error.status === 'RESOURCE_EXHAUSTED') {
+            attempts++;
+            console.warn(`[AI] Reintento ${attempts}/${maxAttempts} debido a cuota...`);
+            await new Promise(resolve => setTimeout(resolve, 2000)); // Esperar 2 segundos
+          } else {
+            break; // Si es otro error (404, etc), no reintentar
+          }
         }
-      });
+      }
 
-      const response = await chat.sendMessage({ message: newMessage });
-      console.log(`[AI] Respuesta recibida correctamente`);
-      res.json({ text: response.text });
+      throw lastError;
     } catch (error: any) {
-      console.error('--- ERROR LLAMANDO A GEMINI ---');
+      console.error('--- ERROR FINAL LLAMANDO A GEMINI ---');
       console.error('Mensaje:', error.message);
-      console.error('Stack:', error.stack);
-      if (error.details) console.error('Detalles:', JSON.stringify(error.details, null, 2));
-      res.status(500).json({ error: error.message || "Error interno del servidor" });
+      res.status(error.status === 'RESOURCE_EXHAUSTED' ? 429 : 500).json({ error: error.message || "Error interno" });
     }
   });
 
